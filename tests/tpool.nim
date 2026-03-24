@@ -40,9 +40,10 @@ suite "pool":
     g_pool = new_pool(4, host, port, "tpool_thread")
 
     proc pool_worker() {.thread.} =
-      let c = borrow(g_pool)
-      ping(c)
-      recycle(g_pool, c)
+      {.gcsafe.}:
+        let c = borrow(g_pool)
+        ping(c)
+        recycle(g_pool, c)
 
     var threads: array[4, Thread[void]]
     for i in 0 ..< 4:
