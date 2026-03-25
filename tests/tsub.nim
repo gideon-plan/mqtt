@@ -3,7 +3,8 @@
 {.experimental: "strict_funcs".}
 
 import std/[unittest, atomics, os]
-import mqtt/[packet, conn, sub, publish, lattice]
+import basis/code/choice
+import mqtt/[packet, conn, sub, publish]
 
 when not declared(host):
   const host = "127.0.0.1"

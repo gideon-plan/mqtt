@@ -7,7 +7,8 @@
 {.experimental: "strict_funcs".}
 
 import std/[atomics, tables]
-import packet, conn, lattice
+import basis/code/choice
+import packet, conn
 
 # =====================================================================================================================
 # Types
@@ -39,21 +40,21 @@ proc new_publisher*(conn: MqttConn): MqttPublisher =
 proc publish_qos0*(pub: var MqttPublisher, topic: string, payload: string,
                    retain: bool = false,
                    props: Properties = initOrderedTable[uint8, seq[PropertyValue]]()
-                  ): Result[void, MqttError] =
+                  ): Choice[bool] =
   ## Publish with QoS 0 (fire and forget). No ack expected.
   let pkt = MqttPacket(packet_type: ptPublish, dup: false, publish_qos: qos0,
                        retain: retain, topic: topic, publish_packet_id: 0,
                        publish_props: props, payload: payload)
   try:
     send_packet(pub.conn, pkt)
-    Result[void, MqttError](ok: true)
+    good(true)
   except MqttError as e:
-    Result[void, MqttError].bad(e[])
+    bad[bool]("mqtt", e.msg)
 
 proc publish_qos1*(pub: var MqttPublisher, topic: string, payload: string,
                    retain: bool = false,
                    props: Properties = initOrderedTable[uint8, seq[PropertyValue]]()
-                  ): Result[uint16, MqttError] =
+                  ): Choice[uint16] =
   ## Publish with QoS 1 (at-least-once). Waits for PUBACK.
   let pid = pub.next_id()
   let pkt = MqttPacket(packet_type: ptPublish, dup: false, publish_qos: qos1,
@@ -63,19 +64,19 @@ proc publish_qos1*(pub: var MqttPublisher, topic: string, payload: string,
     send_packet(pub.conn, pkt)
     let ack = recv_packet(pub.conn)
     if ack.packet_type != ptPuback:
-      return Result[uint16, MqttError].bad(MqttError(msg: "expected PUBACK, got " & $ack.packet_type))
+      return bad[uint16]("mqtt", "expected PUBACK, got " & $ack.packet_type)
     if ack.puback_packet_id != pid:
-      return Result[uint16, MqttError].bad(MqttError(msg: "PUBACK packet ID mismatch"))
+      return bad[uint16]("mqtt", "PUBACK packet ID mismatch")
     if ack.puback_reason >= 0x80:
-      return Result[uint16, MqttError].bad(MqttError(msg: "PUBACK rejected: " & $ack.puback_reason))
-    Result[uint16, MqttError].good(pid)
+      return bad[uint16]("mqtt", "PUBACK rejected: " & $ack.puback_reason)
+    good(pid)
   except MqttError as e:
-    Result[uint16, MqttError].bad(e[])
+    bad[uint16]("mqtt", e.msg)
 
 proc publish_qos2*(pub: var MqttPublisher, topic: string, payload: string,
                    retain: bool = false,
                    props: Properties = initOrderedTable[uint8, seq[PropertyValue]]()
-                  ): Result[uint16, MqttError] =
+                  ): Choice[uint16] =
   ## Publish with QoS 2 (exactly-once). PUBLISH -> PUBREC -> PUBREL -> PUBCOMP.
   let pid = pub.next_id()
   let pkt = MqttPacket(packet_type: ptPublish, dup: false, publish_qos: qos2,
@@ -86,11 +87,11 @@ proc publish_qos2*(pub: var MqttPublisher, topic: string, payload: string,
     # Wait for PUBREC
     let pubrec = recv_packet(pub.conn)
     if pubrec.packet_type != ptPubrec:
-      return Result[uint16, MqttError].bad(MqttError(msg: "expected PUBREC, got " & $pubrec.packet_type))
+      return bad[uint16]("mqtt", "expected PUBREC, got " & $pubrec.packet_type)
     if pubrec.pubrec_packet_id != pid:
-      return Result[uint16, MqttError].bad(MqttError(msg: "PUBREC packet ID mismatch"))
+      return bad[uint16]("mqtt", "PUBREC packet ID mismatch")
     if pubrec.pubrec_reason >= 0x80:
-      return Result[uint16, MqttError].bad(MqttError(msg: "PUBREC rejected: " & $pubrec.pubrec_reason))
+      return bad[uint16]("mqtt", "PUBREC rejected: " & $pubrec.pubrec_reason)
     # Send PUBREL
     let pubrel = MqttPacket(packet_type: ptPubrel, pubrel_packet_id: pid,
                             pubrel_reason: rcSuccess,
@@ -99,9 +100,9 @@ proc publish_qos2*(pub: var MqttPublisher, topic: string, payload: string,
     # Wait for PUBCOMP
     let pubcomp = recv_packet(pub.conn)
     if pubcomp.packet_type != ptPubcomp:
-      return Result[uint16, MqttError].bad(MqttError(msg: "expected PUBCOMP, got " & $pubcomp.packet_type))
+      return bad[uint16]("mqtt", "expected PUBCOMP, got " & $pubcomp.packet_type)
     if pubcomp.pubcomp_packet_id != pid:
-      return Result[uint16, MqttError].bad(MqttError(msg: "PUBCOMP packet ID mismatch"))
-    Result[uint16, MqttError].good(pid)
+      return bad[uint16]("mqtt", "PUBCOMP packet ID mismatch")
+    good(pid)
   except MqttError as e:
-    Result[uint16, MqttError].bad(e[])
+    bad[uint16]("mqtt", e.msg)

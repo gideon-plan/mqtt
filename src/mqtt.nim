@@ -3,8 +3,8 @@
 {.experimental: "strict_funcs".}
 
 # Client modules
-import mqtt/[packet, conn, pool, publish, sub, lattice]
-export packet, conn, pool, publish, sub, lattice
+import mqtt/[packet, conn, pool, publish, sub]
+export packet, conn, pool, publish, sub
 
 # Server modules
 import mqtt/[topic, session, retain, will, router, listener]
