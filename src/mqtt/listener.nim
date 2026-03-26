@@ -3,6 +3,8 @@
 ## Thread-per-client: spawns a handler thread for each accepted connection.
 ## Server-side CONNECT/CONNACK handshake. Blocking I/O.
 
+import segfaults
+
 {.experimental: "strict_funcs".}
 
 import std/[net, atomics, tables, options, locks]
