@@ -3,7 +3,8 @@
 
 {.experimental: "strict_funcs".}
 
-import std/[unittest, tables, options]
+import std/[unittest, tables]
+import basis/code/choice
 import mqtt/[packet]
 
 when not declared(empty_props):
@@ -141,7 +142,7 @@ suite "CONNECT":
     let pkt = MqttPacket(packet_type: ptConnect,
                          connect_flags: ConnectFlags(clean_start: true),
                          keep_alive: 60, connect_props: empty_props,
-                         client_id: "test_client", will_config: none(WillConfig),
+                         client_id: "test_client", will_config: choice.none[WillConfig](),
                          username: "", password: "")
     let encoded = encode(pkt)
     var pos = 0
@@ -156,7 +157,7 @@ suite "CONNECT":
     let pkt = MqttPacket(packet_type: ptConnect,
                          connect_flags: ConnectFlags(clean_start: true, username: true, password: true),
                          keep_alive: 30, connect_props: empty_props,
-                         client_id: "auth_client", will_config: none(WillConfig),
+                         client_id: "auth_client", will_config: choice.none[WillConfig](),
                          username: "user", password: "pass")
     let encoded = encode(pkt)
     var pos = 0
@@ -173,7 +174,7 @@ suite "CONNECT":
                          connect_flags: ConnectFlags(clean_start: true, will: true,
                                                      will_qos: qos1, will_retain: true),
                          keep_alive: 60, connect_props: empty_props,
-                         client_id: "will_client", will_config: some(wc),
+                         client_id: "will_client", will_config: good(wc),
                          username: "", password: "")
     let encoded = encode(pkt)
     var pos = 0
@@ -181,9 +182,9 @@ suite "CONNECT":
     check decoded.connect_flags.will == true
     check decoded.connect_flags.will_qos == qos1
     check decoded.connect_flags.will_retain == true
-    check decoded.will_config.isSome
-    check decoded.will_config.get.topic == "will/topic"
-    check decoded.will_config.get.payload == "goodbye"
+    check decoded.will_config.is_good
+    check decoded.will_config.val.topic == "will/topic"
+    check decoded.will_config.val.payload == "goodbye"
 
 # =====================================================================================================================
 # CONNACK
@@ -483,7 +484,7 @@ suite "multi-packet":
     let connect_pkt = encode(MqttPacket(packet_type: ptConnect,
                                     connect_flags: ConnectFlags(clean_start: true),
                                     keep_alive: 60, connect_props: empty_props,
-                                    client_id: "mc", will_config: none(WillConfig),
+                                    client_id: "mc", will_config: choice.none[WillConfig](),
                                     username: "", password: ""))
     let connack_pkt = encode(MqttPacket(packet_type: ptConnack, session_present: false,
                                     connack_reason: rcSuccess, connack_props: empty_props))

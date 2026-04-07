@@ -7,7 +7,8 @@ import segfaults
 
 {.experimental: "strict_funcs".}
 
-import std/[net, atomics, tables, options, locks]
+import std/[net, atomics, tables, locks]
+import basis/code/choice
 import packet, session, router, topic, will
 
 # =====================================================================================================================
@@ -117,8 +118,8 @@ proc accept_client(server: var MqttServer, client_sock: Socket): (bool, Subscrib
                        connect_pkt.will_config)
 
   # Register will if present
-  if connect_pkt.connect_flags.will and connect_pkt.will_config.isSome:
-    server.will_store.register(connect_pkt.client_id, connect_pkt.will_config.get)
+  if connect_pkt.connect_flags.will and connect_pkt.will_config.is_good:
+    server.will_store.register(connect_pkt.client_id, connect_pkt.will_config.val)
 
   # Send CONNACK
   let connack = MqttPacket(packet_type: ptConnack, session_present: false,

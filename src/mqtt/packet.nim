@@ -6,7 +6,8 @@
 
 {.experimental: "strict_funcs".}
 
-import std/[tables, options]
+import std/tables
+import basis/code/choice
 
 # =====================================================================================================================
 # Errors
@@ -158,7 +159,7 @@ type
       keep_alive*: uint16
       connect_props*: Properties
       client_id*: string
-      will_config*: Option[WillConfig]
+      will_config*: Choice[WillConfig]
       username*: string
       password*: string
     of ptConnack:
@@ -454,8 +455,8 @@ proc encode_connect*(pkt: MqttPacket): string {.raises: [MqttError].} =
   # Payload: client ID
   variable.add(encode_utf8_string(pkt.client_id))
   # Will properties + will topic + will payload
-  if pkt.connect_flags.will and pkt.will_config.isSome:
-    let wc = pkt.will_config.get
+  if pkt.connect_flags.will and pkt.will_config.is_good:
+    let wc = pkt.will_config.val
     variable.add(encode_properties_with_length(wc.properties))
     variable.add(encode_utf8_string(wc.topic))
     variable.add(encode_binary_data(wc.payload))
@@ -624,7 +625,7 @@ proc decode_connect(buf: string, pos: var int, end_pos: int): MqttPacket {.raise
   # Client ID
   let cid = decode_utf8_string(buf, pos)
   # Will
-  var wc: Option[WillConfig]
+  var wc: Choice[WillConfig] = choice.none[WillConfig]()
   if cf.will:
     var w: WillConfig
     w.qos = cf.will_qos
@@ -632,7 +633,7 @@ proc decode_connect(buf: string, pos: var int, end_pos: int): MqttPacket {.raise
     w.properties = decode_properties(buf, pos)
     w.topic = decode_utf8_string(buf, pos)
     w.payload = decode_binary_data(buf, pos)
-    wc = some(w)
+    wc = good(w)
   # Username
   var uname = ""
   if cf.username:

@@ -6,7 +6,8 @@
 
 {.experimental: "strict_funcs".}
 
-import std/[tables, options, net]
+import std/[tables, net]
+import basis/code/choice
 import packet
 
 # =====================================================================================================================
@@ -30,7 +31,7 @@ type
     state*: SessionState
     subscriptions*: Table[string, QoS]  ## filter -> granted QoS
     inflight*: Table[uint16, InflightMsg]  ## packet_id -> pending msg
-    will*: Option[WillConfig]
+    will*: Choice[WillConfig]
     keep_alive*: uint16
     sock*: Socket
     next_packet_id: uint16
@@ -40,7 +41,7 @@ type
 # =====================================================================================================================
 
 proc new_session*(client_id: string, sock: Socket, keep_alive: uint16,
-                  clean_start: bool, will: Option[WillConfig]): ClientSession =
+                  clean_start: bool, will: Choice[WillConfig]): ClientSession =
   result.client_id = client_id
   result.sock = sock
   result.keep_alive = keep_alive
@@ -76,5 +77,5 @@ proc clear_session*(session: var ClientSession) =
   ## Clear all session state (for clean_start).
   session.subscriptions.clear()
   session.inflight.clear()
-  session.will = none(WillConfig)
+  session.will = choice.none[WillConfig]()
   session.state = ssNew

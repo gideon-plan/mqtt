@@ -7,7 +7,8 @@
 
 {.experimental: "strict_funcs".}
 
-import std/[net, options, tables]
+import std/[net, tables]
+import basis/code/choice
 import packet
 
 # =====================================================================================================================
@@ -89,7 +90,7 @@ proc recv_packet*(conn: MqttConn): MqttPacket {.raises: [MqttError].} =
 proc open_conn*(host: string, port: int, client_id: string = "",
                 keep_alive: uint16 = 60, clean_start: bool = true,
                 username: string = "", password: string = "",
-                will: Option[WillConfig] = none(WillConfig),
+                will: Choice[WillConfig] = choice.none[WillConfig](),
                 connect_props: Properties = initOrderedTable[uint8, seq[PropertyValue]]()
                ): MqttConn {.raises: [MqttError].} =
   result = MqttConn(keep_alive: keep_alive, client_id: client_id)
@@ -100,10 +101,10 @@ proc open_conn*(host: string, port: int, client_id: string = "",
     raise newException(MqttError, "connect error: " & e.msg)
   var cf: ConnectFlags
   cf.clean_start = clean_start
-  cf.will = will.isSome
-  if will.isSome:
-    cf.will_qos = will.get.qos
-    cf.will_retain = will.get.retain
+  cf.will = will.is_good
+  if will.is_good:
+    cf.will_qos = will.val.qos
+    cf.will_retain = will.val.retain
   cf.username = username.len > 0
   cf.password = password.len > 0
   let connect_pkt = MqttPacket(packet_type: ptConnect, connect_flags: cf,

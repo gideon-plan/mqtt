@@ -2,13 +2,14 @@
 
 {.experimental: "strict_funcs".}
 
-import std/[unittest, net, options, tables]
+import std/[unittest, net, tables]
+import basis/code/choice
 import mqtt/[packet, session, will]
 
 suite "session":
   test "new session clean start":
     let sock = newSocket()
-    let sess = new_session("client1", sock, 60, true, none(WillConfig))
+    let sess = new_session("client1", sock, 60, true, choice.none[WillConfig]())
     check sess.client_id == "client1"
     check sess.state == ssNew
     check sess.keep_alive == 60
@@ -17,7 +18,7 @@ suite "session":
 
   test "add and remove subscription":
     let sock = newSocket()
-    var sess = new_session("client2", sock, 60, true, none(WillConfig))
+    var sess = new_session("client2", sock, 60, true, choice.none[WillConfig]())
     sess.add_subscription("test/topic", qos1)
     check "test/topic" in sess.subscriptions
     check sess.subscriptions["test/topic"] == qos1
@@ -27,7 +28,7 @@ suite "session":
 
   test "inflight tracking":
     let sock = newSocket()
-    var sess = new_session("client3", sock, 60, true, none(WillConfig))
+    var sess = new_session("client3", sock, 60, true, choice.none[WillConfig]())
     let msg = InflightMsg(packet_id: 1, topic: "t", payload: "p", qos: qos1)
     sess.add_inflight(1, msg)
     check 1'u16 in sess.inflight
@@ -37,7 +38,7 @@ suite "session":
 
   test "packet ID generation":
     let sock = newSocket()
-    var sess = new_session("client4", sock, 60, true, none(WillConfig))
+    var sess = new_session("client4", sock, 60, true, choice.none[WillConfig]())
     let id1 = sess.next_id()
     check id1 == 1
     let id2 = sess.next_id()
@@ -46,7 +47,7 @@ suite "session":
 
   test "clear session":
     let sock = newSocket()
-    var sess = new_session("client5", sock, 60, false, none(WillConfig))
+    var sess = new_session("client5", sock, 60, false, choice.none[WillConfig]())
     sess.add_subscription("a/b", qos0)
     sess.add_inflight(1, InflightMsg(packet_id: 1, topic: "t", payload: "p", qos: qos1))
     check sess.state == ssResumed
