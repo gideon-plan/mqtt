@@ -11,7 +11,7 @@ suite "session":
     let sock = newSocket()
     let sess = new_session("client1", sock, 60, true, choice.none[WillConfig]())
     check sess.client_id == "client1"
-    check sess.state == ssNew
+    check sess.state == SessionState.New
     check sess.keep_alive == 60
     check sess.subscriptions.len == 0
     sock.close()
@@ -50,11 +50,11 @@ suite "session":
     var sess = new_session("client5", sock, 60, false, choice.none[WillConfig]())
     sess.add_subscription("a/b", qos0)
     sess.add_inflight(1, InflightMsg(packet_id: 1, topic: "t", payload: "p", qos: qos1))
-    check sess.state == ssResumed
+    check sess.state == SessionState.Resumed
     sess.clear_session()
     check sess.subscriptions.len == 0
     check sess.inflight.len == 0
-    check sess.state == ssNew
+    check sess.state == SessionState.New
     sock.close()
 
 suite "will":

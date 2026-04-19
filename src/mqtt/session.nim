@@ -22,9 +22,9 @@ type
     payload*: string
     qos*: QoS
 
-  SessionState* = enum
-    ssNew       ## Fresh session, no prior state
-    ssResumed   ## Resumed from prior session (clean_start = false)
+  SessionState* {.pure.} = enum
+    New       ## Fresh session, no prior state
+    Resumed   ## Resumed from prior session (clean_start = false)
 
   ClientSession* = object
     client_id*: string
@@ -50,9 +50,9 @@ proc new_session*(client_id: string, sock: Socket, keep_alive: uint16,
   result.inflight = initTable[uint16, InflightMsg]()
   result.next_packet_id = 1
   if clean_start:
-    result.state = ssNew
+    result.state = SessionState.New
   else:
-    result.state = ssResumed
+    result.state = SessionState.Resumed
 
 proc next_id*(session: var ClientSession): uint16 =
   result = session.next_packet_id
@@ -78,4 +78,4 @@ proc clear_session*(session: var ClientSession) =
   session.subscriptions.clear()
   session.inflight.clear()
   session.will = choice.none[WillConfig]()
-  session.state = ssNew
+  session.state = SessionState.New
